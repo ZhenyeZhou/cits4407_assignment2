@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# 输入参数为文件名和分隔符
+input_file=$1
+separator=$2
+
+# 读取第一行，获取列名
+IFS="$separator" read -r -a columns < <(head -n 1 "$input_file")
+
+# 初始化数组来存储每列空值计数
+declare -a empty_counts
+column_count=${#columns[@]}
+
+for i in "${!columns[@]}"; do
+  empty_counts[i]=0
+done
+
+# 读取文件并统计空值
+while IFS= read -r line; do
+  # 确保每行以分隔符结尾，保证最后一个字段被解析
+  line="${line}${separator}"
+  IFS="$separator" read -r -a fields <<< "$line"
+  
+  # 确保字段数组长度与列数相同
+  while [[ ${#fields[@]} -lt $column_count ]]; do
+    fields+=("")
+  done
+
+  for i in "${!fields[@]}"; do
+    # 检查是否为空或只有空格
+    if [[ -z "${fields[i]}" || "${fields[i]}" =~ ^[[:space:]]*$ ]]; then
+      ((empty_counts[i]++))
+    fi
+  done
+done < <(tail -n +2 "$input_file")
+
+# 输出结果
+for i in "${!columns[@]}"; do
+  column_name="${columns[i]}"
+  # 使用未命名列的默认名称
+  if [[ -z "$column_name" ]]; then
+    column_name="Column $(($i + 1))"
+  fi
+  echo "${column_name}: ${empty_counts[i]}"
+done
