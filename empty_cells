@@ -1,45 +1,43 @@
 #!/bin/bash
 
-# 输入参数为文件名和分隔符
-input_file=$1
+# Check if the usage is correct
+if [ "$#" -ne 2 ]; then
+  echo "Usage: $0 filename separator"
+  exit 1
+fi
+
+filename=$1
 separator=$2
 
-# 读取第一行，获取列名
-IFS="$separator" read -r -a columns < <(head -n 1 "$input_file")
+# Read the first line to get column headers, and remove possible CRLF characters
+IFS="$separator" read -r -a columns < <(head -n 1 "$filename" | tr -d '\r')
 
-# 初始化数组来存储每列空值计数
+# Initialize an array to record the count of empty cells in each column
 declare -a empty_counts
-column_count=${#columns[@]}
-
-for i in "${!columns[@]}"; do
+for ((i=0; i<${#columns[@]}; i++)); do
   empty_counts[i]=0
 done
 
-# 读取文件并统计空值
-while IFS= read -r line; do
-  # 确保每行以分隔符结尾，保证最后一个字段被解析
-  line="${line}${separator}"
-  IFS="$separator" read -r -a fields <<< "$line"
-  
-  # 确保字段数组长度与列数相同
-  while [[ ${#fields[@]} -lt $column_count ]]; do
-    fields+=("")
-  done
+# Use a temporary file to avoid subshell issues
+tempfile=$(mktemp)
 
-  for i in "${!fields[@]}"; do
-    # 检查是否为空或只有空格
-    if [[ -z "${fields[i]}" || "${fields[i]}" =~ ^[[:space:]]*$ ]]; then
+# Read the file line by line starting from the second line, removing possible CRLF characters
+tail -n +2 "$filename" | tr -d '\r' > "$tempfile"
+
+# Process each line
+while IFS="$separator" read -r -a row; do
+  for ((i=0; i<${#columns[@]}; i++)); do
+    # Check if the index exists in the row and if the cell is empty
+    if [ -z "${row[i]}" ]; then
       ((empty_counts[i]++))
     fi
   done
-done < <(tail -n +2 "$input_file")
+done < "$tempfile"
 
-# 输出结果
-for i in "${!columns[@]}"; do
-  column_name="${columns[i]}"
-  # 使用未命名列的默认名称
-  if [[ -z "$column_name" ]]; then
-    column_name="Column $(($i + 1))"
-  fi
-  echo "${column_name}: ${empty_counts[i]}"
+# Remove the temporary file
+rm "$tempfile"
+
+# Output column headers and their corresponding empty cell counts
+for ((i=0; i<${#columns[@]}; i++)); do
+  echo "${columns[i]}: ${empty_counts[i]}"
 done

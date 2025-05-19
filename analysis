@@ -2,25 +2,25 @@
 
 input_file=$1
 
-# 找出最受欢迎的 Domain 和 Mechanics
+# Determine the most frequent Domain and Mechanics
 awk -F'\t' '
 BEGIN {
     OFS="\t"
 }
 NR > 1 {
-    # 分析 Domains
+    # Examine Domains
     split($NF, domains, ", ")
     for (domain in domains) {
         domain_count[domains[domain]]++
     }
-    # 分析 Mechanics
+    # Examine Mechanics
     split($(NF-1), mechanics, ", ")
     for (mechanic in mechanics) {
         mechanics_count[mechanics[mechanic]]++
     }
 }
 END {
-    # 找出最多的
+    # Identify the top occurrences
     for (domain in domain_count) {
         if (domain_count[domain] > max_domain_count) {
             max_domain_count = domain_count[domain]
@@ -33,12 +33,12 @@ END {
             most_popular_mechanics = mechanic
         }
     }
-    print "The most popular game domain is", most_popular_domain, "found in", max_domain_count, "games"
-    print "The most popular game mechanics is", most_popular_mechanics, "found in", max_mechanics_count, "games"
+    print "The most prevalent game domain is", most_popular_domain, "appearing in", max_domain_count, "games"
+    print "The most prevalent game mechanics is", most_popular_mechanics, "appearing in", max_mechanics_count, "games"
 }
 ' "$input_file"
 
-# 计算皮尔逊相关系数
+# Function to compute Pearson correlation coefficient
 calculate_pearson() {
     awk -F'\t' -v col1="$1" -v col2="$2" '
     NR > 1 {
@@ -63,10 +63,10 @@ calculate_pearson() {
     ' "$input_file"
 }
 
-# 计算出版年份和平均评分的相关性
-echo -n "The correlation between the year of publication and the average rating is "
+# Evaluate the relationship between publication year and average rating
+echo -n "The correlation between the publication year and average rating is "
 calculate_pearson 3 9
 
-# 计算游戏复杂性和平均评分的相关性
-echo -n "The correlation between the complexity of a game and its average rating is "
+# Evaluate the relationship between game complexity and average rating
+echo -n "The correlation between game complexity and average rating is "
 calculate_pearson 11 9
